@@ -4,9 +4,7 @@
   <title>onedrive explorer</title>
   <link rel="stylesheet" type="text/css" href="style.css"/>
   <script type="text/javascript" src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
-  <script id="odauth" src="odauth.js"
-   clientId="000000004C16C833" scopes="onedrive.readonly wl.signin"
-   redirectUri="https://hlomzik.github.io/onedrive-auth/callback.html"></script>
+  <script src="odauth.js"></script>
 </head>
 <body>
   <div id="od-loading"></div>
@@ -107,7 +105,7 @@
     function onAuthenticated(token, authWindow) {
       if (token) {
         if (authWindow) {
-          removeLoginButton();
+          ODAuth.removeLoginButton();
           authWindow.close();
         }
 
@@ -230,7 +228,12 @@
     // start the whole thing off by calling odauth() in non-click mode.
     // if the user isn't logged in already, a sign-in link will appear
     // for them to click.
-    odauth();
+    var ODAuth = new OneDriveAuth({
+      clientId: "000000004C16C833",
+      scopes: "onedrive.readonly wl.signin",
+      redirectUri: "https://hlomzik.github.io/onedrive-auth/callback.html"
+    });
+    ODAuth.auth(false);
   </script>
 </body>
 </html>
