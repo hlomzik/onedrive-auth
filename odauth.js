@@ -80,32 +80,6 @@ class OneDriveAuth {
     }
   }
   
-  /**
-   * Called from the callback page after OAuth authorization.
-   * On success it save the token to cookie and call user's onAuthenticated()
-   * function in parent window.
-   */
-  static onAuthCallback() {
-    var authInfo = this.getAuthInfoFromUrl();
-    var token = authInfo["access_token"];
-    var expiry = parseInt(authInfo["expires_in"]);
-    this.setCookie(token, expiry);
-    window.opener.onAuthenticated(token, window);
-  }
-  
-  static getAuthInfoFromUrl() {
-    if (window.location.hash) {
-      var authResponse = window.location.hash.substring(1);
-      var authInfo = JSON.parse(
-        '{"' + authResponse.replace(/&/g, '","').replace(/=/g, '":"') + '"}',
-        (key, value) => key === "" ? value : decodeURIComponent(value)
-      );
-      return authInfo;
-    } else {
-      alert("failed to receive auth token");
-    }
-  }
-  
   getTokenFromCookie() {
     var cookies = document.cookie;
     var name = "odauth=";
@@ -124,35 +98,24 @@ class OneDriveAuth {
     return "";
   }
   
-  static setCookie(token, expiresInSeconds) {
-    var expiration = new Date();
-    expiration.setTime(expiration.getTime() + expiresInSeconds * 1000);
-    var cookie = "odauth=" + token + "; path=/; expires=" + expiration.toUTCString();
-    
-    if (document.location.protocol.toLowerCase() == "https") {
-      cookie = cookie + ";secure";
-    }
-    
-    document.cookie = cookie;
-  }
-
   /**
    * Called when a login button needs to be displayed for the user to click on.
    * If a customLoginButton() function is defined by your app, it will be called
-   * with 'true' passed in to indicate the button should be added. Otherwise, it
+   * with `callback` passed in to indicate the button should be added. Otherwise, it
    * will insert a textual login link at the top of the page. If defined, your
-   * showCustomLoginButton should call challengeForAuth() when clicked.
+   * showCustomLoginButton should call `callback` when clicked.
    */
   showLoginButton() {
+    var callback = this.challengeForAuth.bind(this);
     if (typeof window.showCustomLoginButton === "function") {
-      window.showCustomLoginButton(true);
+      window.showCustomLoginButton(callback);
       return;
     }
     
     var loginText = document.createElement('a');
     loginText.href = "#";
     loginText.id = "loginText";
-    loginText.onclick = this.challengeForAuth.bind(this);
+    loginText.onclick = callback;
     loginText.innerText = "[sign in]";
     document.body.insertBefore(loginText, document.body.children[0]);
   }
@@ -214,9 +177,47 @@ class OneDriveAuth {
     ];
     var popup = window.open(url, "oauth", features.join(","));
     if (!popup) {
-      alert("failed to pop up auth window");
+      console.error("failed to pop up auth window");
     }
     
     popup.focus();
+  }
+  
+  /**
+   * Called from the callback page after OAuth authorization.
+   * On success it save the token to cookie and call user's onAuthenticated()
+   * function in parent window.
+   */
+  static onAuthCallback() {
+    var authInfo = this.getAuthInfoFromUrl();
+    var token = authInfo["access_token"];
+    var expiry = parseInt(authInfo["expires_in"]);
+    this.setCookie(token, expiry);
+    window.opener.onAuthenticated(token, window);
+  }
+  
+  static getAuthInfoFromUrl() {
+    if (window.location.hash) {
+      var authResponse = window.location.hash.substring(1);
+      var authInfo = JSON.parse(
+        '{"' + authResponse.replace(/&/g, '","').replace(/=/g, '":"') + '"}',
+        (key, value) => key === "" ? value : decodeURIComponent(value)
+      );
+      return authInfo;
+    } else {
+      console.error("failed to receive auth token");
+    }
+  }
+  
+  static setCookie(token, expiresInSeconds) {
+    var expiration = new Date();
+    expiration.setTime(expiration.getTime() + expiresInSeconds * 1000);
+    var cookie = "odauth=" + token + "; path=/; expires=" + expiration.toUTCString();
+    
+    if (document.location.protocol.toLowerCase() == "https") {
+      cookie = cookie + ";secure";
+    }
+    
+    document.cookie = cookie;
   }
 }
