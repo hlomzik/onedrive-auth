@@ -100,18 +100,10 @@ class OneDriveAuth {
   
   /**
    * Called when a login button needs to be displayed for the user to click on.
-   * If a customLoginButton() function is defined by your app, it will be called
-   * with `callback` passed in to indicate the button should be added. Otherwise, it
-   * will insert a textual login link at the top of the page. If defined, your
-   * showCustomLoginButton should call `callback` when clicked.
+   * It will insert a textual login link at the top of the page.
    */
   showLoginButton() {
     var callback = this.challengeForAuth.bind(this);
-    if (typeof window.showCustomLoginButton === "function") {
-      window.showCustomLoginButton(callback);
-      return;
-    }
-    
     var loginText = document.createElement('a');
     loginText.href = "#";
     loginText.id = "loginText";
@@ -127,11 +119,6 @@ class OneDriveAuth {
    * Otherwise it will remove the textual link that showLoginButton() created.
    */
   removeLoginButton() {
-    if (typeof window.showCustomLoginButton === "function") {
-      window.showCustomLoginButton(false);
-      return;
-    }
-    
     var loginText = document.getElementById("loginText");
     if (loginText) {
       document.body.removeChild(loginText);
