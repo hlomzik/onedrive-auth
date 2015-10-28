@@ -60,7 +60,7 @@ class OneDriveAuth {
    * @param {boolean} wasClicked whether the call is result of a click or not
    */
   auth(wasClicked) {
-    ensureHttps();
+    this.ensureHttps();
     var token = this.getTokenFromCookie();
     if (token) {
       window.onAuthenticated(token);
