@@ -1,11 +1,10 @@
-# onedrive-explorer-js
-### [See it in action!](https://onedrive.github.io/odx)
+# onedrive-auth
 
-OneDrive Explorer web app
+Simple javascript OneDrive auth library. Makes an authorization and returns back the token.
 
-This sample illustrates the basic concepts for interacting with the OneDrive API to create a file explorer web app.
+Here is the simple example of authorizing using this library and interacting with OneDrive api to create a file explorer web app: [See it in action!](https://hlomzik.github.io/onedrive-auth)
 
 Included in this project:
 
 * OneDriveExplorer (index.html) - A sample web app to view the contents of the signed in user's OneDrive and show the JSON structures returned by the API.
-* ODAuth (odauth.js) - A simple js library for handling the OAuth2 implicit grant flow for OneDrive. Used by the OneDriveExplorer web app.
+* OneDriveAuth (odauth.js) - A simple js library for handling the OAuth2 implicit grant flow for OneDrive. Used by the OneDriveExplorer web app.
