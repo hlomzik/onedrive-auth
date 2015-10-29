@@ -7,10 +7,10 @@
  * - Host a copy of callback.html and odauth.js on your domain.
  * - Embed odauth.js in your app like this:
  *   <script src="odauth.js"></script>
- * - Define the onAuthenticated(token) function in your app to receive the auth token.
  * - Create instance of OneDriveAuth and call auth() method to begin and whenever you
- *   need an auth token to make an API call. If you're making an api call in response to
- *   a user's click action, call auth(true), otherwise just call auth(). The difference
+ *   need to make an API call. In first `callback` param you should provide handler of
+ *   successful authorization. If you're making an api call in response to a user's click
+ *   action, call auth(callback, true), otherwise just call auth(callback). The difference
  *   is that sometimes OneDriveAuth needs to pop up a window so the user can sign in,
  *   grant your app permission, etc. The pop up can only be launched in response
  *   to a user click, otherwise the browser's popup blocker will block it. When
@@ -38,11 +38,25 @@ class OneDriveAuth {
       throw "appInfo object should have `redirectUri` property set to your redirect landing url";
     }
     this.appInfo = appInfo;
+    
+    var sep = this.appInfo.redirectUri.indexOf('?') < 0 ? '?' : '&';
+    // adds ?clientId=... to the end of string or before the hash in the redirectUri
+    // because the auth window doesn't get back any info about client from OneDrive
+    this.appInfo.redirectUri = this.appInfo.redirectUri.replace(/(#|$)/, sep + 'clientId=' + this.appInfo.clientId + '$1');
+    // list of handlers for successful authorization
+    this.callbacks = [];
+    OneDriveAuth.clients[appInfo.clientId] = this;
   }
   
   /**
+   * Callback to handle successful authorization
+   * @callback onAuth
+   * @param {string} token
+   */
+  
+  /**
    * The main auth method. First, we check if we have the user's auth token stored
-   * in a cookie. if so, we read it and immediately call your onAuthenticated() method.
+   * in a cookie. if so, we read it and immediately call your `callback` method.
    * If we can't find the auth cookie, we need to pop up a window and send the user
    * to Microsoft Account so that they can sign in or grant your app the permissions
    * it needs. Depending on whether or not auth() was called in response to a user
@@ -50,25 +64,35 @@ class OneDriveAuth {
    * the user to click (which results in the pop-up). when the user finishes the
    * auth flow, the popup window redirects back to your hosted callback.html file,
    * which calls the onAuthCallback() static method below. It then sets the auth cookie
-   * and calls your app's onAuthenticated() function, passing in the optional 'window'
-   * argument for the popup window. your onAuthenticated function should close the
-   * popup window if it's passed in.
+   * and calls given `callback` function after closing the auth window.
    *
    * Subsequent calls to auth() will usually complete immediately without the
    * popup because the cookie is still fresh.
    * 
-   * @param {boolean} wasClicked whether the call is result of a click or not
+   * @param {onAuth} callback to call in case of success authorization
+   * @param {boolean} [wasClicked=false] whether the call is result of a click or not
+   * @return {boolean} if the app is authorized yet; `false` means authorization started
    */
-  auth(wasClicked) {
+  auth(callback, wasClicked) {
     this.ensureHttps();
     var token = this.getTokenFromCookie();
+    // if `callback` was missed for whatever reason we transfer its value to `wasClicked`
+    wasClicked = wasClicked || (callback === true);
+    callback = (typeof callback === 'function') ? callback : false;
+    
     if (token) {
-      window.onAuthenticated(token);
-    } else if (wasClicked) {
+      callback && callback(token);
+      return true;
+    }
+    
+    // would be called in OneDriveAuth.onAuthenticated() method
+    callback && this.callbacks.push(callback);
+    if (wasClicked) {
       this.challengeForAuth();
     } else {
       this.showLoginButton();
     }
+    return false;
   }
   
   /**
@@ -171,23 +195,39 @@ class OneDriveAuth {
   }
   
   /**
+   * Called from auth window in response to successful authorization
+   * @param {string} token for current user for this app
+   * @param {Window} window opened window which should be closed immediately
+   */
+  onAuthenticated(token, window) {
+    window.close();
+    
+    var callback;
+    while (callback = this.callbacks.shift()) {
+      callback(token);
+    }
+  }
+  
+  /**
    * Called from the callback page after OAuth authorization.
-   * On success it save the token to cookie and call user's onAuthenticated()
-   * function in parent window.
+   * On success it save the token to cookie and call onAuthenticated() method
+   * of corresponding OneDriveAuth instance in parent window.
    */
   static onAuthCallback() {
     var authInfo = this.getAuthInfoFromUrl();
     var token = authInfo["access_token"];
     var expiry = parseInt(authInfo["expires_in"]);
+    var clientId = authInfo["clientId"];
+    var client = window.opener.OneDriveAuth.clients[clientId];
     this.setCookie(token, expiry);
-    window.opener.onAuthenticated(token, window);
+    client.onAuthenticated(token, window);
   }
   
   static getAuthInfoFromUrl() {
     if (window.location.hash) {
-      var authResponse = window.location.hash.substring(1);
+      var authResponse = (window.location.search + window.location.hash).substr(1);
       var authInfo = JSON.parse(
-        '{"' + authResponse.replace(/&/g, '","').replace(/=/g, '":"') + '"}',
+        '{"' + authResponse.replace(/[&#]/g, '","').replace(/=/g, '":"') + '"}',
         (key, value) => key === "" ? value : decodeURIComponent(value)
       );
       return authInfo;
@@ -208,3 +248,6 @@ class OneDriveAuth {
     document.cookie = cookie;
   }
 }
+
+// list of clients on the page
+OneDriveAuth.clients = {};
