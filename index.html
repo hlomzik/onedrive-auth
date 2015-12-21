@@ -104,10 +104,7 @@
     // in this demo app we just use this as the method to drive the page logic
     function onAuthenticated(token, authWindow) {
       if (token) {
-        if (authWindow) {
-          ODAuth.removeLoginButton();
-          authWindow.close();
-        }
+        ODAuth.removeLoginButton();
 
         (function($){
           // we extract the onedrive path from the url fragment and we
@@ -228,6 +225,9 @@
     // start the whole thing off by calling odauth() in non-click mode.
     // if the user isn't logged in already, a sign-in link will appear
     // for them to click.
+    function odauth(wasClicked) {
+      ODAuth.auth(onAuthenticated, wasClicked);
+    }
     var ODAuth = new OneDriveAuth({
       clientId: "000000004C16C833",
       scopes: "onedrive.readonly wl.signin",
