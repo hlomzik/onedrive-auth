@@ -23,7 +23,8 @@ class OneDriveAuth {
    * @param {Array} appInfo
    * @param {string} appInfo.clientId from App Settings
    * @param {string} appInfo.scopes separated by space ("onedrive.readonly wl.signin" for example)
-   * @param {string} appInfo.redirectUri
+   * @param {string} appInfo.redirectUri for callback popup
+   * @param {string} [appInfo.redirectOrigin] origin of callback window
    */
   constructor(appInfo) {
     if (!appInfo.clientId) {
@@ -37,6 +38,12 @@ class OneDriveAuth {
     if (!appInfo.redirectUri) {
       throw "appInfo object should have `redirectUri` property set to your redirect landing url";
     }
+    
+    if (!appInfo.redirectOrigin) {
+      // get the scheme://host:port from redirectUri
+      appInfo.redirectOrigin = appInfo.redirectUri.match(/^[\w:]+\/\/[^\/]+/)[0];
+    }
+    
     this.appInfo = appInfo;
     
     var sep = this.appInfo.redirectUri.indexOf('?') < 0 ? '?' : '&';
@@ -45,7 +52,9 @@ class OneDriveAuth {
     this.appInfo.redirectUri = this.appInfo.redirectUri.replace(/(#|$)/, sep + 'clientId=' + this.appInfo.clientId + '$1');
     // list of handlers for successful authorization
     this.callbacks = [];
-    OneDriveAuth.clients[appInfo.clientId] = this;
+    
+    // listen for callback's message with auth token
+    window.addEventListener('message', this.onAuthenticated.bind(this), false);
   }
   
   /**
@@ -196,13 +205,19 @@ class OneDriveAuth {
   
   /**
    * Called from auth window in response to successful authorization
-   * @param {string} token for current user for this app
-   * @param {Window} window opened window which should be closed immediately
+   * @param {Event} event object with sent data
+   * @param {string} event.data.token
+   * @param {string} event.data.clientId
+   * @param {string} event.origin origin of callback popup window
    */
-  onAuthenticated(token, window) {
-    window.close();
+  onAuthenticated(event) {
+    var callback, token, data = event.data;
+    // skip the message addressed to another client or came from unknown location
+    if (this.appInfo.clientId !== data.clientId) return false;
+    if (this.appInfo.redirectOrigin !== event.origin) return false;
     
-    var callback;
+    token = data.token;
+    
     while (callback = this.callbacks.shift()) {
       callback(token);
     }
@@ -218,9 +233,11 @@ class OneDriveAuth {
     var token = authInfo["access_token"];
     var expiry = parseInt(authInfo["expires_in"]);
     var clientId = authInfo["clientId"];
-    var client = window.opener.OneDriveAuth.clients[clientId];
+    var origin = location.origin;
+    
     this.setCookie(token, expiry);
-    client.onAuthenticated(token, window);
+    window.opener.postMessage({ token, clientId }, origin);
+    window.close();
   }
   
   static getAuthInfoFromUrl() {
@@ -249,5 +266,3 @@ class OneDriveAuth {
   }
 }
 
-// list of clients on the page
-OneDriveAuth.clients = {};
