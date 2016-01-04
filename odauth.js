@@ -266,3 +266,4 @@ class OneDriveAuth {
   }
 }
 
+export default OneDriveAuth;
