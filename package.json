@@ -1,0 +1,25 @@
+{
+  "name": "onedrive-auth",
+  "version": "0.1.1",
+  "description": "Simple ES2015 library for OneDrive auth",
+  "homepage": "https://github.com/hlomzik/onedrive-auth#readme",
+  "main": "odauth.js",
+  "license": "MIT",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "onedrive",
+    "auth"
+  ],
+  "repository": "hlomzik/onedrive-auth",
+  "author": "hlomzik",
+  "bugs": {
+    "url": "https://github.com/hlomzik/onedrive-auth/issues"
+  },
+  "devDependencies": {
+    "babel-preset-es2015": "^6.3.13",
+    "babel-plugin-transform-es2015-modules-umd": "^6.3.13",
+    "babel-plugin-add-module-exports": "^0.1.2"
+  }
+}
