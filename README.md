@@ -1,6 +1,7 @@
 # onedrive-auth
 
-Simple javascript OneDrive auth library. Makes an authorization and returns back the token.
+Simple javascript OneDrive auth library. Makes an authorization and returns
+back the OAuth2 token.
 
 ## Usage
 
@@ -36,8 +37,19 @@ with OneDrive api to create a file explorer web app:
 
 ## Files
 
-* OneDriveExplorer (index.html) - A sample web app to view the contents of the signed in user's OneDrive and show the JSON structures returned by the API.
-* OneDriveAuth (odauth.js) - A simple js library for handling the OAuth2 implicit grant flow for OneDrive. Used by the OneDriveExplorer web app.
+* `odauth.js` - ES2015 library, main file with simple `export default`
+* `dist/odauth.js` - transpiled ES3 file to direct use in web apps; contains
+  UMD block, globally accessible as `OneDriveAuth`
+* `.babelrc` - options for babel@6 to get the current transpiled result
+
+Sample OneDrive explorer page. Only available in `gh-pages` branch:
+
+* `index.html` - a sample web app to view the contents of the signed in user's
+  OneDrive and show the JSON structures returned by the API.
+* `callback.html` - page assigned with `redirectUri` to work with response
+  from OneDrive OAuth2 API. Returns control back to main page with token.
+* `style.css`, `spinner_grey_40_transparent.gif` - just utility files for
+  example page. Should be inserted in `index.html` directly later.
 
 ## License
 
