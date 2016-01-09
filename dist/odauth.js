@@ -79,6 +79,10 @@
         appInfo.redirectOrigin = appInfo.redirectUri.match(/^[\w:]+\/\/[^\/]+/)[0];
       }
 
+      if (typeof appInfo.requireHttps === 'undefined') {
+        appInfo.requireHttps = true;
+      }
+
       this.appInfo = appInfo;
       var sep = this.appInfo.redirectUri.indexOf('?') < 0 ? '?' : '&';
       this.appInfo.redirectUri = this.appInfo.redirectUri.replace(/(#|$)/, sep + 'clientId=' + this.appInfo.clientId + '$1');
@@ -117,8 +121,8 @@
     }, {
       key: "ensureHttps",
       value: function ensureHttps() {
-        if (!this.isHttps()) {
-          window.location.href = "https:" + window.location.href.substring(window.location.protocol.length);
+        if (this.appInfo.requireHttps && !this.isHttps()) {
+          throw new Error("HTTPS is required to authorize this application for OneDrive");
         }
       }
     }, {

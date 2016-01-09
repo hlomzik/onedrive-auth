@@ -25,6 +25,7 @@ class OneDriveAuth {
    * @param {string} appInfo.scopes separated by space ("onedrive.readonly wl.signin" for example)
    * @param {string} appInfo.redirectUri for callback popup
    * @param {string} [appInfo.redirectOrigin] origin of callback window
+   * @param {bool} [appInfo.requireHttps=true] check for https and throw an error if it's omitted
    */
   constructor(appInfo) {
     if (!appInfo.clientId) {
@@ -42,6 +43,10 @@ class OneDriveAuth {
     if (!appInfo.redirectOrigin) {
       // get the scheme://host:port from redirectUri
       appInfo.redirectOrigin = appInfo.redirectUri.match(/^[\w:]+\/\/[^\/]+/)[0];
+    }
+    
+    if (typeof appInfo.requireHttps === 'undefined') {
+      appInfo.requireHttps = true;
     }
     
     this.appInfo = appInfo;
@@ -81,6 +86,7 @@ class OneDriveAuth {
    * @param {onAuth} callback to call in case of success authorization
    * @param {boolean} [wasClicked=false] whether the call is result of a click or not
    * @return {boolean} if the app is authorized yet; `false` means authorization started
+   * @throws if https is required but omitted
    */
   auth(callback, wasClicked) {
     this.ensureHttps();
@@ -113,11 +119,12 @@ class OneDriveAuth {
   }
   
   /**
-   * For added security we require https
+   * For added security we check for https
+   * @throws if https is required but omitted
    */
   ensureHttps() {
-    if (!this.isHttps()) {
-      window.location.href = "https:" + window.location.href.substring(window.location.protocol.length);
+    if (this.appInfo.requireHttps && !this.isHttps()) {
+      throw new Error("HTTPS is required to authorize this application for OneDrive");
     }
   }
   
