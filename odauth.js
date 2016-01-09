@@ -114,7 +114,7 @@ class OneDriveAuth {
    * Check if current page loaded via HTTPS
    * @return {boolean}
    */
-  isHttps() {
+  static isHttps() {
     return window.location.protocol.toLowerCase() === "https:";
   }
   

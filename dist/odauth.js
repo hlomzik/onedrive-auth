@@ -114,11 +114,6 @@
         return false;
       }
     }, {
-      key: "isHttps",
-      value: function isHttps() {
-        return window.location.protocol.toLowerCase() === "https:";
-      }
-    }, {
       key: "ensureHttps",
       value: function ensureHttps() {
         if (this.appInfo.requireHttps && !this.isHttps()) {
@@ -208,6 +203,11 @@
         }
       }
     }], [{
+      key: "isHttps",
+      value: function isHttps() {
+        return window.location.protocol.toLowerCase() === "https:";
+      }
+    }, {
       key: "onAuthCallback",
       value: function onAuthCallback() {
         var authInfo = this.getAuthInfoFromUrl();
