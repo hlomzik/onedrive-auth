@@ -110,9 +110,14 @@
         return false;
       }
     }, {
+      key: "isHttps",
+      value: function isHttps() {
+        return window.location.protocol.toLowerCase() === "https:";
+      }
+    }, {
       key: "ensureHttps",
       value: function ensureHttps() {
-        if (window.location.protocol != "https:") {
+        if (!this.isHttps()) {
           window.location.href = "https:" + window.location.href.substring(window.location.protocol.length);
         }
       }
@@ -233,7 +238,7 @@
         expiration.setTime(expiration.getTime() + expiresInSeconds * 1000);
         var cookie = "odauth=" + token + "; path=/; expires=" + expiration.toUTCString();
 
-        if (document.location.protocol.toLowerCase() == "https") {
+        if (this.isHttps()) {
           cookie = cookie + ";secure";
         }
 

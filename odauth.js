@@ -105,10 +105,18 @@ class OneDriveAuth {
   }
   
   /**
+   * Check if current page loaded via HTTPS
+   * @return {boolean}
+   */
+  isHttps() {
+    return window.location.protocol.toLowerCase() === "https:";
+  }
+  
+  /**
    * For added security we require https
    */
   ensureHttps() {
-    if (window.location.protocol != "https:") {
+    if (!this.isHttps()) {
       window.location.href = "https:" + window.location.href.substring(window.location.protocol.length);
     }
   }
@@ -258,7 +266,7 @@ class OneDriveAuth {
     expiration.setTime(expiration.getTime() + expiresInSeconds * 1000);
     var cookie = "odauth=" + token + "; path=/; expires=" + expiration.toUTCString();
     
-    if (document.location.protocol.toLowerCase() == "https") {
+    if (this.isHttps()) {
       cookie = cookie + ";secure";
     }
     
