@@ -210,21 +210,25 @@ class OneDriveAuth {
   /**
    * Called from auth window in response to successful authorization
    * @param {Event} event object with sent data
-   * @param {string} event.data.token
+   * @param {string} event.data.access_token
    * @param {string} event.data.clientId
+   * @param {string} event.data.error
+   * @param {string} event.data.error_description
    * @param {string} event.origin origin of callback popup window
    * @return {boolean|Promise.<string, Error>} token on success
    */
   onAuthenticated(event) {
-    var callback, data = event.data, token = data.token;
+    var callback, data = event.data, token = data.access_token;
     // skip the message addressed to another client or came from unknown location
     if (this.appInfo.clientId !== data.clientId) return false;
     if (this.appInfo.redirectOrigin !== event.origin) return false;
     
     this.inProgress = false;
     
-    if (!token) {
+    if (data.error) {
       let error = new Error();
+      error.message = data.error_description;
+      error.name = data.error;
       return Promise.reject(error);
     } else {
       while (callback = this.callbacks.shift()) {
@@ -243,11 +247,15 @@ class OneDriveAuth {
     var authInfo = this.getAuthInfoFromUrl();
     var token = authInfo["access_token"];
     var expiry = parseInt(authInfo["expires_in"]);
-    var clientId = authInfo["clientId"];
     var origin = location.origin;
+    if (authInfo.error_description) {
+      authInfo.error_description = decodeURIComponent(authInfo.error_description).replace(/\+/g, ' ');
+    }
     
-    this.setCookie(token, expiry);
-    window.opener.postMessage({ token, clientId }, origin);
+    if (token) {
+      this.setCookie(token, expiry);
+    }
+    window.opener.postMessage(authInfo, origin);
     window.close();
   }
   
