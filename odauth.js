@@ -57,9 +57,6 @@ class OneDriveAuth {
     this.appInfo.redirectUri = this.appInfo.redirectUri.replace(/(#|$)/, sep + 'clientId=' + this.appInfo.clientId + '$1');
     // list of handlers for successful authorization
     this.callbacks = [];
-    
-    // listen for callback's message with auth token
-    window.addEventListener('message', this.onAuthenticated.bind(this), false);
   }
   
   /**
@@ -83,21 +80,28 @@ class OneDriveAuth {
    * Subsequent calls to auth() will usually complete immediately without the
    * popup because the cookie is still fresh.
    * 
-   * @param {onAuth} callback to call in case of success authorization
+   * @param {onAuth} [callback] to call in case of success authorization; if missed promise is returned
    * @param {boolean} [wasClicked=false] whether the call is result of a click or not
-   * @return {boolean} if the app is authorized yet; `false` means authorization started
+   * @return {boolean|Promise.<string>}
+   *  `true` if authorized yet;
+   *  `false` if authorization started or in progress;
+   *  `Promise` if `callback` is missed
    * @throws if https is required but omitted
    */
   auth(callback, wasClicked) {
     this.ensureHttps();
     var token = this.getTokenFromCookie();
-    // if `callback` was missed for whatever reason we transfer its value to `wasClicked`
+    // deal with both optional params
     wasClicked = wasClicked || (callback === true);
     callback = (typeof callback === 'function') ? callback : null;
     
     if (token) {
-      callback && callback(token);
-      return true;
+      if (callback) {
+        callback(token);
+        return true;
+      } else {
+        return Promise.resolve(token);
+      }
     }
     
     // would be called in OneDriveAuth.onAuthenticated() method
@@ -108,6 +112,16 @@ class OneDriveAuth {
     
     if (wasClicked) {
       this.challengeForAuth();
+      
+      return new Promise((ok, no) => {
+        // listen for callback's message with auth token
+        window.addEventListener('message', e => {
+          let p = this.onAuthenticated(e);
+          p && p.then(ok, no);
+        }, false);
+      });
+    } else if (!callback) {
+      return Promise.reject();
     }
     return false;
   }
@@ -199,6 +213,7 @@ class OneDriveAuth {
    * @param {string} event.data.token
    * @param {string} event.data.clientId
    * @param {string} event.origin origin of callback popup window
+   * @return {boolean|Promise.<string, Error>} token on success
    */
   onAuthenticated(event) {
     var callback, data = event.data, token = data.token;
@@ -208,8 +223,14 @@ class OneDriveAuth {
     
     this.inProgress = false;
     
-    while (callback = this.callbacks.shift()) {
-      callback(token);
+    if (!token) {
+      let error = new Error();
+      return Promise.reject(error);
+    } else {
+      while (callback = this.callbacks.shift()) {
+        callback(token);
+      }
+      return Promise.resolve(token);
     }
   }
   
