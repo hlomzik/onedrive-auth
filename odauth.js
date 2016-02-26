@@ -25,9 +25,11 @@ class OneDriveAuth {
    * @param {string} appInfo.scopes separated by space ("onedrive.readonly wl.signin" for example)
    * @param {string} appInfo.redirectUri for callback popup
    * @param {string} [appInfo.redirectOrigin] origin of callback window
-   * @param {bool} [appInfo.requireHttps=true] check for https and throw an error if it's omitted
+   * @param {boolean} [appInfo.requireHttps=true] check for https and throw an error if it's omitted
    */
   constructor(appInfo) {
+    this.appInfo = Object.assign({}, appInfo); // clone parameters
+
     if (!appInfo.clientId) {
       throw "appInfo object should have `clientId` property set to your application id";
     }
@@ -42,14 +44,12 @@ class OneDriveAuth {
     
     if (!appInfo.redirectOrigin) {
       // get the scheme://host:port from redirectUri
-      appInfo.redirectOrigin = appInfo.redirectUri.match(/^[\w:]+\/\/[^\/]+/)[0];
+      this.appInfo.redirectOrigin = appInfo.redirectUri.match(/^[\w:]+\/\/[^\/]+/)[0];
     }
     
     if (typeof appInfo.requireHttps === 'undefined') {
-      appInfo.requireHttps = true;
+      this.appInfo.requireHttps = true;
     }
-    
-    this.appInfo = appInfo;
     
     var sep = this.appInfo.redirectUri.indexOf('?') < 0 ? '?' : '&';
     // adds ?clientId=... to the end of string or before the hash in the redirectUri
@@ -93,7 +93,7 @@ class OneDriveAuth {
     var token = this.getTokenFromCookie();
     // if `callback` was missed for whatever reason we transfer its value to `wasClicked`
     wasClicked = wasClicked || (callback === true);
-    callback = (typeof callback === 'function') ? callback : false;
+    callback = (typeof callback === 'function') ? callback : null;
     
     if (token) {
       callback && callback(token);
@@ -102,6 +102,10 @@ class OneDriveAuth {
     
     // would be called in OneDriveAuth.onAuthenticated() method
     callback && this.callbacks.push(callback);
+    
+    if (this.inProgress) return false;
+    this.inProgress = true;
+    
     if (wasClicked) {
       this.challengeForAuth();
     } else {
@@ -226,12 +230,12 @@ class OneDriveAuth {
    * @param {string} event.origin origin of callback popup window
    */
   onAuthenticated(event) {
-    var callback, token, data = event.data;
+    var callback, data = event.data, token = data.token;
     // skip the message addressed to another client or came from unknown location
     if (this.appInfo.clientId !== data.clientId) return false;
     if (this.appInfo.redirectOrigin !== event.origin) return false;
     
-    token = data.token;
+    this.inProgress = false;
     
     while (callback = this.callbacks.shift()) {
       callback(token);
