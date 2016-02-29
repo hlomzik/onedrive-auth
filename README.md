@@ -3,6 +3,8 @@
 Simple javascript OneDrive auth library. Makes an authorization and returns
 back the OAuth2 token.
 
+Uses [Promises](https://www.promisejs.org/) for better flow handling.
+
 ## Usage
 
 ```
@@ -23,10 +25,20 @@ var onedrive = new OneDriveAuth({
   redirectUri: 'YOUR-CALLBACK-URI',
 });
 
-// start auth process
-onedrive.auth((token) => {
+// check for active token
+onedrive.auth().then(token => {
   // call OneDrive API endpoints with given token
+}).catch(err => {
+  // create auth button
 });
+
+// start auth process after user's click
+some_auth_button.onclick = event => {
+  onedrive.auth(true).then(token => {
+    // call OneDrive API endpoints with given token
+    // hide auth button
+  });
+};
 ```
 
 ## Example
