@@ -89,12 +89,20 @@ class OneDriveAuth {
    * @throws if https is required but omitted
    */
   auth(callback, wasClicked) {
-    this.ensureHttps();
-    var token = this.getTokenFromCookie();
+    if (!this.ensureHttps()) {
+      let error = new Error("HTTPS is required to authorize this application for OneDrive");
+      if (callback) {
+        throw error;
+      } else {
+        return Promise.reject(error);
+      }
+    }
+    
     // deal with both optional params
     wasClicked = wasClicked || (callback === true);
     callback = (typeof callback === 'function') ? callback : null;
     
+    var token = this.getTokenFromCookie();
     if (token) {
       if (callback) {
         callback(token);
@@ -107,23 +115,22 @@ class OneDriveAuth {
     // would be called in OneDriveAuth.onAuthenticated() method
     callback && this.callbacks.push(callback);
     
-    if (this.inProgress) return false;
-    this.inProgress = true;
+    // @todo should we start another auth on repetitive call if wasClicked === true?
+    if (this.state) return callback ? false : this.state;
     
-    if (wasClicked) {
-      this.challengeForAuth();
-      
-      return new Promise((ok, no) => {
-        // listen for callback's message with auth token
-        window.addEventListener('message', e => {
-          let p = this.onAuthenticated(e);
-          p && p.then(ok, no);
-        }, false);
-      });
-    } else if (!callback) {
-      return Promise.reject();
-    }
-    return false;
+    if (!wasClicked) return callback ? false : Promise.reject();
+    
+    this.state = new Promise((ok, no) => {
+      // listen for callback's message with auth token
+      window.addEventListener('message', e => {
+        let p = this.onAuthenticated(e);
+        p && p.then(ok, no);
+      }, false);
+    });
+    
+    this.challengeForAuth();
+    
+    return callback ? false : this.state;
   }
   
   /**
@@ -136,12 +143,10 @@ class OneDriveAuth {
   
   /**
    * For added security we check for https
-   * @throws if https is required but omitted
+   * @return {boolean}
    */
   ensureHttps() {
-    if (this.appInfo.requireHttps && !this.isHttps()) {
-      throw new Error("HTTPS is required to authorize this application for OneDrive");
-    }
+    return !this.appInfo.requireHttps || this.isHttps();
   }
   
   getTokenFromCookie() {
@@ -222,8 +227,6 @@ class OneDriveAuth {
     // skip the message addressed to another client or came from unknown location
     if (this.appInfo.clientId !== data.clientId) return false;
     if (this.appInfo.redirectOrigin !== event.origin) return false;
-    
-    this.inProgress = false;
     
     if (data.error) {
       let error = new Error();
