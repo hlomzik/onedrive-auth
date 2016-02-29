@@ -63,6 +63,8 @@
     function OneDriveAuth(appInfo) {
       _classCallCheck(this, OneDriveAuth);
 
+      this.appInfo = Object.assign({}, appInfo);
+
       if (!appInfo.clientId) {
         throw "appInfo object should have `clientId` property set to your application id";
       }
@@ -76,49 +78,63 @@
       }
 
       if (!appInfo.redirectOrigin) {
-        appInfo.redirectOrigin = appInfo.redirectUri.match(/^[\w:]+\/\/[^\/]+/)[0];
+        this.appInfo.redirectOrigin = appInfo.redirectUri.match(/^[\w:]+\/\/[^\/]+/)[0];
       }
 
       if (typeof appInfo.requireHttps === 'undefined') {
-        appInfo.requireHttps = true;
+        this.appInfo.requireHttps = true;
       }
 
-      this.appInfo = appInfo;
       var sep = this.appInfo.redirectUri.indexOf('?') < 0 ? '?' : '&';
       this.appInfo.redirectUri = this.appInfo.redirectUri.replace(/(#|$)/, sep + 'clientId=' + this.appInfo.clientId + '$1');
       this.callbacks = [];
-      window.addEventListener('message', this.onAuthenticated.bind(this), false);
     }
 
     _createClass(OneDriveAuth, [{
       key: "auth",
       value: function auth(callback, wasClicked) {
-        this.ensureHttps();
-        var token = this.getTokenFromCookie();
+        var _this = this;
+
+        if (!this.ensureHttps()) {
+          var error = new Error("HTTPS is required to authorize this application for OneDrive");
+
+          if (callback) {
+            throw error;
+          } else {
+            return Promise.reject(error);
+          }
+        }
+
         wasClicked = wasClicked || callback === true;
-        callback = typeof callback === 'function' ? callback : false;
+        callback = typeof callback === 'function' ? callback : null;
+        var token = this.getTokenFromCookie();
 
         if (token) {
-          callback && callback(token);
-          return true;
+          if (callback) {
+            callback(token);
+            return true;
+          } else {
+            return Promise.resolve(token);
+          }
         }
 
         callback && this.callbacks.push(callback);
+        if (this.state) return callback ? false : this.state;
+        if (!wasClicked) return callback ? false : Promise.reject();
+        this.state = new Promise(function (ok, no) {
+          window.addEventListener('message', function (e) {
+            var p = _this.onAuthenticated(e);
 
-        if (wasClicked) {
-          this.challengeForAuth();
-        } else {
-          this.showLoginButton();
-        }
-
-        return false;
+            p && p.then(ok, no);
+          }, false);
+        });
+        this.challengeForAuth();
+        return callback ? false : this.state;
       }
     }, {
       key: "ensureHttps",
       value: function ensureHttps() {
-        if (this.appInfo.requireHttps && !this.isHttps()) {
-          throw new Error("HTTPS is required to authorize this application for OneDrive");
-        }
+        return !this.appInfo.requireHttps || this.isHttps();
       }
     }, {
       key: "getTokenFromCookie",
@@ -140,26 +156,6 @@
         }
 
         return "";
-      }
-    }, {
-      key: "showLoginButton",
-      value: function showLoginButton() {
-        var callback = this.challengeForAuth.bind(this);
-        var loginText = document.createElement('a');
-        loginText.href = "#";
-        loginText.id = "loginText";
-        loginText.onclick = callback;
-        loginText.innerText = "[sign in]";
-        document.body.insertBefore(loginText, document.body.children[0]);
-      }
-    }, {
-      key: "removeLoginButton",
-      value: function removeLoginButton() {
-        var loginText = document.getElementById("loginText");
-
-        if (loginText) {
-          document.body.removeChild(loginText);
-        }
       }
     }, {
       key: "challengeForAuth",
@@ -192,14 +188,22 @@
       key: "onAuthenticated",
       value: function onAuthenticated(event) {
         var callback,
-            token,
-            data = event.data;
+            data = event.data,
+            token = data.access_token;
         if (this.appInfo.clientId !== data.clientId) return false;
         if (this.appInfo.redirectOrigin !== event.origin) return false;
-        token = data.token;
 
-        while (callback = this.callbacks.shift()) {
-          callback(token);
+        if (data.error) {
+          var error = new Error();
+          error.message = data.error_description;
+          error.name = data.error;
+          return Promise.reject(error);
+        } else {
+          while (callback = this.callbacks.shift()) {
+            callback(token);
+          }
+
+          return Promise.resolve(token);
         }
       }
     }], [{
@@ -213,13 +217,17 @@
         var authInfo = this.getAuthInfoFromUrl();
         var token = authInfo["access_token"];
         var expiry = parseInt(authInfo["expires_in"]);
-        var clientId = authInfo["clientId"];
         var origin = location.origin;
-        this.setCookie(token, expiry);
-        window.opener.postMessage({
-          token: token,
-          clientId: clientId
-        }, origin);
+
+        if (authInfo.error_description) {
+          authInfo.error_description = decodeURIComponent(authInfo.error_description).replace(/\+/g, ' ');
+        }
+
+        if (token) {
+          this.setCookie(token, expiry);
+        }
+
+        window.opener.postMessage(authInfo, origin);
         window.close();
       }
     }, {
@@ -256,3 +264,4 @@
   exports.default = OneDriveAuth;
   module.exports = exports['default'];
 });
+
