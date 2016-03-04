@@ -134,7 +134,7 @@
     }, {
       key: "ensureHttps",
       value: function ensureHttps() {
-        return !this.appInfo.requireHttps || this.isHttps();
+        return !this.appInfo.requireHttps || OneDriveAuth.isHttps();
       }
     }, {
       key: "getTokenFromCookie",
@@ -214,7 +214,7 @@
     }, {
       key: "onAuthCallback",
       value: function onAuthCallback() {
-        var authInfo = this.getAuthInfoFromUrl();
+        var authInfo = OneDriveAuth.getAuthInfoFromUrl();
         var token = authInfo["access_token"];
         var expiry = parseInt(authInfo["expires_in"]);
         var origin = location.origin;
@@ -224,7 +224,7 @@
         }
 
         if (token) {
-          this.setCookie(token, expiry);
+          OneDriveAuth.setCookie(token, expiry);
         }
 
         window.opener.postMessage(authInfo, origin);
@@ -250,7 +250,7 @@
         expiration.setTime(expiration.getTime() + expiresInSeconds * 1000);
         var cookie = "odauth=" + token + "; path=/; expires=" + expiration.toUTCString();
 
-        if (this.isHttps()) {
+        if (OneDriveAuth.isHttps()) {
           cookie = cookie + ";secure";
         }
 

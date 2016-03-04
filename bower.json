@@ -1,6 +1,6 @@
 {
   "name": "onedrive-auth",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Simple ES2015 library for OneDrive auth",
   "homepage": "https://github.com/hlomzik/onedrive-auth",
   "main": "dist/odauth.js",

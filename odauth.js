@@ -146,7 +146,7 @@ class OneDriveAuth {
    * @return {boolean}
    */
   ensureHttps() {
-    return !this.appInfo.requireHttps || this.isHttps();
+    return !this.appInfo.requireHttps || OneDriveAuth.isHttps();
   }
   
   getTokenFromCookie() {
@@ -247,7 +247,7 @@ class OneDriveAuth {
    * of corresponding OneDriveAuth instance in parent window.
    */
   static onAuthCallback() {
-    var authInfo = this.getAuthInfoFromUrl();
+    var authInfo = OneDriveAuth.getAuthInfoFromUrl();
     var token = authInfo["access_token"];
     var expiry = parseInt(authInfo["expires_in"]);
     var origin = location.origin;
@@ -256,7 +256,7 @@ class OneDriveAuth {
     }
     
     if (token) {
-      this.setCookie(token, expiry);
+      OneDriveAuth.setCookie(token, expiry);
     }
     window.opener.postMessage(authInfo, origin);
     window.close();
@@ -280,7 +280,7 @@ class OneDriveAuth {
     expiration.setTime(expiration.getTime() + expiresInSeconds * 1000);
     var cookie = "odauth=" + token + "; path=/; expires=" + expiration.toUTCString();
     
-    if (this.isHttps()) {
+    if (OneDriveAuth.isHttps()) {
       cookie = cookie + ";secure";
     }
     
