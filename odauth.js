@@ -118,8 +118,6 @@ class OneDriveAuth {
     // @todo should we start another auth on repetitive call if wasClicked === true?
     if (this.state) return callback ? false : this.state;
     
-    if (!wasClicked) return callback ? false : Promise.reject();
-    
     this.state = new Promise((ok, no) => {
       // listen for callback's message with auth token
       window.addEventListener('message', e => {
@@ -128,7 +126,7 @@ class OneDriveAuth {
       }, false);
     });
     
-    this.challengeForAuth();
+    this.challengeForAuth(wasClicked);
     
     return callback ? false : this.state;
   }
@@ -170,8 +168,10 @@ class OneDriveAuth {
   /**
    * Send user to the Microsoft Account OAuth2.0 page to authorize the app
    * and return the user to your redirectUri.
+   * Or try to refresh token if this is just an auth check (`wasClicked` == false)
+   * @param {boolean} wasClicked transferred from auth()
    */
-  challengeForAuth() {
+  challengeForAuth(wasClicked) {
     var appInfo = this.appInfo;
     var url =
       "https://login.live.com/oauth20_authorize.srf" +
@@ -179,7 +179,14 @@ class OneDriveAuth {
       "&scope=" + encodeURIComponent(appInfo.scopes) +
       "&response_type=token" +
       "&redirect_uri=" + encodeURIComponent(appInfo.redirectUri);
-    this.popup(url);
+    
+    if (wasClicked) {
+      this.popup(url);
+    } else {
+      // for silent authentication - just try to refresh the token, no auth flow
+      url += '&display=none';
+      this.iframe(url);
+    }
   }
   
   popup(url) {
@@ -210,6 +217,19 @@ class OneDriveAuth {
     }
     
     popup.focus();
+  }
+  
+  /**
+   * Open little invisible iframe to refresh token if possible
+   * @todo authorize via onload event without postMessage from onAuthCallback()?
+   * @todo iframe.contentWindow.location.href will be the actual resulting address.
+   * @param {string} url
+   */
+  iframe(url) {
+    var iframe = document.createElement('iframe');
+    iframe.src = url;
+    iframe.style = 'position: absolute; width: 1px; height: 1px; top: -100px;';
+    document.body.appendChild(iframe);
   }
   
   /**
@@ -258,7 +278,9 @@ class OneDriveAuth {
     if (token) {
       OneDriveAuth.setCookie(token, expiry);
     }
-    window.opener.postMessage(authInfo, origin);
+    
+    // for popup and for iframe respectively
+    (window.opener || window.parent).postMessage(authInfo, origin);
     window.close();
   }
   
