@@ -1,17 +1,17 @@
 {
   "name": "onedrive-auth",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Simple ES2015 library for OneDrive auth",
   "homepage": "https://github.com/hlomzik/onedrive-auth#readme",
-  "main": "odauth.js",
+  "main": "dist/odauth.js",
   "license": "MIT",
   "scripts": {
+    "compile": "babel -d dist/ src/",
+    "prepublish": "npm run compile",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "files": [
-    "odauth.js",
-    "dist",
-    ".babelrc"
+    "dist/odauth.js"
   ],
   "keywords": [
     "onedrive",
