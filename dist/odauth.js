@@ -120,7 +120,6 @@
 
         callback && this.callbacks.push(callback);
         if (this.state) return callback ? false : this.state;
-        if (!wasClicked) return callback ? false : Promise.reject();
         this.state = new Promise(function (ok, no) {
           window.addEventListener('message', function (e) {
             var p = _this.onAuthenticated(e);
@@ -128,7 +127,7 @@
             p && p.then(ok, no);
           }, false);
         });
-        this.challengeForAuth();
+        this.challengeForAuth(wasClicked);
         return callback ? false : this.state;
       }
     }, {
@@ -159,10 +158,16 @@
       }
     }, {
       key: "challengeForAuth",
-      value: function challengeForAuth() {
+      value: function challengeForAuth(wasClicked) {
         var appInfo = this.appInfo;
         var url = "https://login.live.com/oauth20_authorize.srf" + "?client_id=" + appInfo.clientId + "&scope=" + encodeURIComponent(appInfo.scopes) + "&response_type=token" + "&redirect_uri=" + encodeURIComponent(appInfo.redirectUri);
-        this.popup(url);
+
+        if (wasClicked) {
+          this.popup(url);
+        } else {
+          url += '&display=none';
+          this.iframe(url);
+        }
       }
     }, {
       key: "popup",
@@ -183,6 +188,14 @@
         }
 
         popup.focus();
+      }
+    }, {
+      key: "iframe",
+      value: function iframe(url) {
+        var iframe = document.createElement('iframe');
+        iframe.src = url;
+        iframe.style = 'position: absolute; width: 1px; height: 1px; top: -100px;';
+        document.body.appendChild(iframe);
       }
     }, {
       key: "onAuthenticated",
@@ -227,7 +240,7 @@
           OneDriveAuth.setCookie(token, expiry);
         }
 
-        window.opener.postMessage(authInfo, origin);
+        (window.opener || window.parent).postMessage(authInfo, origin);
         window.close();
       }
     }, {
@@ -264,4 +277,3 @@
   exports.default = OneDriveAuth;
   module.exports = exports['default'];
 });
-
